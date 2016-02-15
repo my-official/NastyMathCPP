@@ -25,11 +25,24 @@ bool FCmp(float a, float b)
 	return std::abs( a - b ) < 0.001f;
 }
 
+bool FCmp(complexF a, complexF b)
+{
+	return std::abs(a.real() - b.real()) < 0.001f && std::abs(a.imag() - b.imag()) < 0.001f;
+}
+
 bool IsFZero(float value)
 {
 	return FCmp(value, 0.f);
 }
 
+
+float sgn(float value)
+{
+	if (value > 0.f)
+		return 1.f;
+	else
+		return -1.f;
+}
 
 std::string RankedMatrixAsString(const Matrix& m, const vector<ElementIndex>& linearlyIndependent)
 {
@@ -87,28 +100,52 @@ Matrix IdentityMatrix(const Matrix& A)
 }
 
 
-void GrowLambdarMatrix(Matrix& Lambdar, const Matrix& A, const Matrix& B)
-{
-	Matrix O = ZeroMatrix(A);
-	Matrix T;
 
-	if (Lambdar.m_HorizontalDimensional > A.m_HorizontalDimensional)
+Matrix PermutationColumnsMatrix(const Matrix& src, const Matrix& dest)
+{
+	if (src.m_HorizontalDimensional != dest.m_HorizontalDimensional ||
+		src.m_VerticalDimensional != dest.m_VerticalDimensional)
 	{
-		for (uint32_t c = 0, size = Lambdar.m_HorizontalDimensional - A.m_HorizontalDimensional; c < size;	c += O.m_HorizontalDimensional)
-		{
-			T.GrowRight(O);
-		}
+		throw logic_error("PermutationColumnsMatrix src.m_HorizontalDimensional != dest.m_HorizontalDimensional ||");
 	}
 
-	T.GrowRight(B);
-	T.GrowRight(A);
+	vector<uint32_t> usedColumns;
+	usedColumns.reserve(src.m_HorizontalDimensional);
 
-	O = ZeroMatrix( Lambdar.GetSubMatrix(0, 0, Lambdar.m_VerticalDimensional, A.m_HorizontalDimensional) );
+	Matrix result( src.m_HorizontalDimensional, src.m_VerticalDimensional);
 
-	Lambdar.GrowRight(O);
+	for (uint32_t src_x = 0; src_x < src.m_HorizontalDimensional; src_x++)
+	{
+		Matrix srcColumn = src.GetSubMatrix(0, src_x, src.m_VerticalDimensional, 1);
 
-	Lambdar.GrowBottom(T);
+
+		uint32_t dest_x = dest.FindColumn(srcColumn);
+
+		if (dest_x == Matrix::npos)
+		{
+			throw logic_error("PermutationColumnsMatrix FindColumn");
+		}		
+
+		while (find(usedColumns.begin(), usedColumns.end(), dest_x) != usedColumns.end())
+		{
+			dest_x = dest.FindColumn(srcColumn, dest_x + 1);
+
+			if (dest_x == Matrix::npos)
+			{
+				throw logic_error("PermutationColumnsMatrix FindColumn");
+			}
+		}
+		
+
+		result[{src_x, dest_x}] = 1.f;		
+
+		usedColumns.push_back(dest_x);
+	}
+
+	return result;
 }
+
+
 
 Matrix::Matrix(initializer_list<float> il)
 {
@@ -328,7 +365,7 @@ Matrix::Matrix(uint32_t vertical, uint32_t horizontal, initializer_list<Matrix> 
 
 bool Matrix::operator==(const Matrix& rhs) const
 {	
-	return std::equal(m_Data.begin(), m_Data.end(), rhs.m_Data.begin(), &FCmp);
+	return std::equal(m_Data.begin(), m_Data.end(), rhs.m_Data.begin(), static_cast<bool(*)(float,float)>( &FCmp ) );
 }
 
 Matrix& Matrix::operator+=(const Matrix& rhs)
@@ -372,6 +409,28 @@ Matrix Matrix::operator+(const Matrix& rhs) const
 	for (uint32_t c = 0, size = (uint32_t)m_Data.size(); c < size; c++)
 	{
 		result.m_Data[c] += rhs.m_Data[c];
+	}
+	return result;
+}
+
+Matrix Matrix::operator-(const Matrix& rhs) const
+{
+	if (m_HorizontalDimensional != rhs.m_HorizontalDimensional || m_VerticalDimensional != rhs.m_VerticalDimensional)
+	{
+		if (m_HorizontalDimensional == m_VerticalDimensional && m_HorizontalDimensional == 0)
+		{
+			return rhs;
+		}
+		else
+		{
+			throw logic_error("Matrix::operator+ m_HorizontalDimensional != rhs.m_HorizontalDimensional || m_VerticalDimensional != rhs.m_VerticalDimensional");
+		}
+	}
+
+	Matrix result = (*this);
+	for (uint32_t c = 0, size = (uint32_t)m_Data.size(); c < size; c++)
+	{
+		result.m_Data[c] -= rhs.m_Data[c];
 	}
 	return result;
 }
@@ -432,17 +491,16 @@ float Matrix::Det(vector<float>* bottomDets /*= nullptr*/) const
 	{
 		return m_Data[0];
 	}
-
-	float det = 0;
+		
 
 	if (m_HorizontalDimensional == 2)
 	{
-		det = ( (*this)[{ 0,0 }] * (*this)[{ 1,1 }] ) - ( (*this)[{ 0,1 }] * (*this)[{ 1,0 }] );
+		return ( (*this)[{ 0,0 }] * (*this)[{ 1,1 }] ) - ( (*this)[{ 0,1 }] * (*this)[{ 1,0 }] );		
 	}
 
 	if (m_HorizontalDimensional == 3)
 	{	
-		det = (*this)[{ 0, 0 }] * (*this)[{ 1, 1 }] * (*this)[{ 2, 2 }]
+		return (*this)[{ 0, 0 }] * (*this)[{ 1, 1 }] * (*this)[{ 2, 2 }]
 			+ (*this)[{ 0, 2 }] * (*this)[{ 1, 0 }] * (*this)[{ 2, 1 }]
 			+ (*this)[{ 0, 1 }] * (*this)[{ 1, 2 }] * (*this)[{ 2, 0 }]
 
@@ -450,33 +508,55 @@ float Matrix::Det(vector<float>* bottomDets /*= nullptr*/) const
 			- (*this)[{ 0, 1 }] * (*this)[{ 1, 0 }] * (*this)[{ 2, 2 }]
 			- (*this)[{ 0, 0 }] * (*this)[{ 1, 2 }] * (*this)[{ 2, 1 }];
 
-		return det;
 			
 	}
 	else
 	{
+		float det = 0;
+
 		Minor minor;
 		minor.SetDimensionals(m_HorizontalDimensional - 1, m_HorizontalDimensional - 1);
 		float sign = 1.f;
 		for (uint32_t x = 0; x < m_HorizontalDimensional; x++, sign *= -1.f )
 		{
-			ExtractMinor(0, x, minor);
+			float elementValue = (*this)[{ 0, x }];
+			float minorDet;
 
-			float minorDet = sign * (*this)[{ 0, x }] * minor.Det();
+			if (!IsFZero(elementValue))
+			{
+				ExtractMinor(0, x, minor);
+				float minorDet = sign * elementValue * minor.Det();
+				det += minorDet;
+			}
+			else
+				minorDet = 0.f;
 
 			if (bottomDets)
 			{
-				bottomDets->push_back( minorDet );
+				bottomDets->push_back(minorDet);
 			}
 
-
-			det += minorDet;
 		}
+
+		return det;
 	}
 
-	return det;
+	
 }
 
+
+Eigen::MatrixXf Matrix::AsEigenMatrix() const
+{
+	Eigen::MatrixXf m(m_VerticalDimensional, m_HorizontalDimensional);
+	for (uint32_t y = 0; y < m_VerticalDimensional; ++y)
+	{
+		for (uint32_t x = 0; x < m_HorizontalDimensional; ++x)
+		{
+			m(y, x) = (*this)[{y, x}];
+		}
+	}
+	return m;
+}
 
 std::string Matrix::AsStringRanked(RankMethod rankMethod /*= RankMethod::LeftTop*/) const
 {
@@ -484,6 +564,225 @@ std::string Matrix::AsStringRanked(RankMethod rankMethod /*= RankMethod::LeftTop
 	Rank(rankMethod, &linearlyIndependent);
 	return ::RankedMatrixAsString(*this, linearlyIndependent);	
 }
+
+float Matrix::Trace() const
+{
+	if (m_HorizontalDimensional != m_VerticalDimensional)
+		throw logic_error("Matrix::Trace m_HorizontalDimensional != m_VerticalDimensional");
+
+	float result = 0.f;
+
+	for (uint32_t y = 0; y < m_VerticalDimensional; ++y)
+	{		
+		result += (*this)[{y, y}];
+	}
+
+	return result;
+}
+
+std::vector<complexF> Matrix::Eigenvalues() const
+{
+	if (m_HorizontalDimensional != m_VerticalDimensional)
+		throw logic_error("Matrix::Eigenvalues m_HorizontalDimensional != m_VerticalDimensional");
+
+	vector<complexF> result;
+
+	using namespace Eigen;
+
+	
+	EigenSolver<MatrixXf> solver(AsEigenMatrix());
+
+	for (uint32_t c = 0, size = (uint32_t)solver.eigenvalues().size(); c < size; c++)
+	{
+		result.push_back(solver.eigenvalues()[c]);
+	}	
+
+	return result;
+}
+
+Vector Matrix::SingularValues() const
+{
+	Vector result;
+
+	using namespace Eigen;
+	
+	JacobiSVD<MatrixXf> solver(AsEigenMatrix());
+
+	for (uint32_t c = 0, size = (uint32_t)solver.singularValues().size(); c < size; c++)
+	{
+		result.push_back(solver.singularValues()[c]);
+	}
+
+	return result;
+}
+//
+//std::vector<complexF> Matrix::Eigenvalues2() const
+//{
+//	if (m_HorizontalDimensional != m_VerticalDimensional)
+//		throw logic_error("Matrix::Eigenvalues m_HorizontalDimensional != m_VerticalDimensional");
+//
+//	vector<complexF> result;
+//	switch (m_HorizontalDimensional)
+//	{
+//		case 1:
+//		{
+//			result.emplace_back( m_Data[0], 0.f);
+//		}
+//		break;
+//		case 2:
+//		{
+//			//lambda = 0.5f * A.trace() +- 0.5f * sqrt( sqr(A.trace()) - 4 * A.Det() ) )
+//			
+//			float trace = Trace();
+//			float det = Det();
+//						
+//			complexF t(trace*trace - 4.f * det, 0.f);
+//			t = sqrt(t);
+//
+//			complexF eigenvalue1 = 0.5f * (trace + t);
+//			complexF eigenvalue2 = 0.5f * (trace - t);
+//
+//			result.push_back(eigenvalue1);
+//			if (!FCmp( eigenvalue1,  eigenvalue2) )
+//			{
+//				result.push_back(eigenvalue2);
+//			}
+//		}
+//		break;
+//		case 3:
+//		{
+//			//y^3 + p*y + q = 0
+//
+//			//a*x^3 + b*x^2 + c*x + d = 0
+//
+//			//x = y - b / (3*a)
+//			
+//			//p = (3*a*c-b*b) / ( 3*a*a)
+//
+//			//q = (2*b^3) / ( 3*a*a)
+//
+//
+//			//x^3 + a*x^2 + b*x + c = 0
+//
+//			///k3
+//
+//			Matrix A = *this;
+//			float trace = A.Trace();
+//
+//			float a = -Trace();
+//			float b = -0.5f*( (A*A).Trace() - trace*trace);
+//			float c = -Det();
+//
+//			float Q = (a*a - 3*b) / 9;
+//			float R = (2*a*a*a - 9*a*b + 27*c) / 54;
+//			float S = Q*Q*Q-R*R;
+//
+//			float a_div_3 = a / 3.f;
+//
+//			if ( IsFZero(S) )
+//			{				
+//				complexF eigenvalue1( -2.f*cbrt(R) - a_div_3, 0.f);
+//				complexF eigenvalue2( cbrt(R) - a_div_3, 0.f);
+//
+//				result.push_back(eigenvalue1);
+//				result.push_back(eigenvalue2);
+//			}
+//			else
+//			{
+//				if (S > 0.0f)
+//				{
+//					float phi = (1.f/3.f)*acos( R / sqrt(Q*Q*Q) );
+//					const float Pi = 3.1416f;
+//
+//					complexF eigenvalue1( -2.f * sqrt(Q) * cos(phi) - a_div_3, 0.f);
+//					complexF eigenvalue2( -2.f * sqrt(Q) * cos(phi + (2.f / 3.f)*Pi) - a_div_3, 0.f);
+//					complexF eigenvalue3( -2.f * sqrt(Q) * cos(phi - (2.f / 3.f)*Pi) - a_div_3, 0.f);
+//
+//					result.push_back(eigenvalue1);
+//					result.push_back(eigenvalue2);
+//					result.push_back(eigenvalue3);
+//				}
+//				else
+//				{
+//					if (IsFZero(Q))
+//					{		
+//						float x1 = -cbrt(c - a*a*a / 27.f) - a_div_3;
+//						complexF eigenvalue1(x1, 0.f);
+//
+//						
+//						float rePart = -0.5f*(a + x1);
+//						float imPart = 0.5f* sqrt(std::abs( (a - 3.f* x1) * (a + x1) - 4.f*b) );
+//
+//						complexF eigenvalue2(rePart, imPart);
+//						complexF eigenvalue3(rePart, -imPart);						
+//
+//						result.push_back(eigenvalue1);
+//						result.push_back(eigenvalue2);
+//						result.push_back(eigenvalue3);
+//					}
+//					else
+//					{
+//						if (Q > 0.0f)
+//						{
+//							float phi = (1.f / 3.f)*acosh( std::abs(R) / sqrt(Q*Q*Q));
+//
+//							complexF eigenvalue1(-2.f * sgn(R) * sqrt(Q) * cosh(phi) - a_div_3, 0.f);
+//							complexF eigenvalue2(sgn(R) * sqrt(Q) * cosh(phi) - a_div_3,  sqrt(3.f)*sqrt(Q)*sinh(phi));
+//							complexF eigenvalue3(eigenvalue2.real(), -eigenvalue2.imag());
+//
+//							result.push_back(eigenvalue1);
+//							result.push_back(eigenvalue2);
+//							result.push_back(eigenvalue3);
+//						}
+//						else
+//						{
+//							float phi = (1.f / 3.f)*asinh(std::abs(R) / sqrt( std::abs(Q*Q*Q) ) );
+//
+//							complexF eigenvalue1(-2.f * sgn(R) * sqrt(std::abs(Q)) * sinh(phi) - a_div_3, 0.f);
+//							complexF eigenvalue2(sgn(R) * sqrt(std::abs(Q)) * sinh(phi) - a_div_3, sqrt(3.f)*sqrt(std::abs(Q))*cosh(phi));
+//							complexF eigenvalue3(eigenvalue2.real(), -eigenvalue2.imag());
+//
+//							result.push_back(eigenvalue1);
+//							result.push_back(eigenvalue2);
+//							result.push_back(eigenvalue3);
+//						}
+//					}
+//				}
+//			}
+//
+//
+//
+//		}
+//		break;
+//		default:
+//			throw logic_error("Matrix::Eigenvalues default: not implemented");
+//		break;
+//	}
+//	return result;
+//}
+
+float Matrix::NormSpectral() const
+{
+	return AsEigenMatrix().operatorNorm();	
+}
+
+bool Matrix::IsStable() const
+{
+	auto eigenvalues = Eigenvalues();
+
+	for (auto& eigenvalue : eigenvalues)
+	{
+		if (eigenvalue.real() <= 0.f)
+			return false;
+	}
+	return true;
+}
+
+//
+//void Matrix::Svd(Matrix& U, Matrix& Sigma, Matrix& V) const
+//{
+//
+//}
 
 uint32_t Matrix::RankInternal_Step1(vector<ElementIndex>* linearlyIndependent, uint32_t target_x /*= 0*/, uint32_t iteration /*= 0*/)
 {
@@ -660,6 +959,7 @@ uint32_t Matrix::Rank(RankMethod rankMethod /*= RankMethod::LeftTop*/, vector<El
 }
 
 
+
 Vector Matrix::GetRowAsVector(uint32_t verticalIndex) const
 {
 	Vector result(m_HorizontalDimensional);
@@ -751,7 +1051,7 @@ std::string Matrix::AsString() const
 	return result;
 }
 
-Matrix Matrix::GetSubMatrix(uint32_t y, uint32_t x, uint32_t verticalDimensional, uint32_t horizontalDimensional)
+Matrix Matrix::GetSubMatrix(uint32_t y, uint32_t x, uint32_t verticalDimensional, uint32_t horizontalDimensional) const
 {
 	if (y + verticalDimensional > m_VerticalDimensional)
 	{
@@ -940,318 +1240,39 @@ bool Matrix::IsZeroMatrix() const
 	return all_of(m_Data.begin(), m_Data.end(), &IsFZero);
 }
 
-MatrixDr::MatrixDr(const Matrix Br, const Matrix Ar, const Matrix Lambdar) : Matrix(1, 3, { Br, Ar, Lambdar }),
-																			m_BrOrigin({ 0,0 }),
-																			m_ArOrigin({ 0,Br.m_HorizontalDimensional }),
-																			m_LambdarOrigin({ 0,Br.m_HorizontalDimensional + Ar.m_HorizontalDimensional }),
-																			m_Br(Br),
-																			m_Ar(Ar),
-																			m_Lambdar(Lambdar),
-																			m_D(0),
-																			m_Q(Ar.m_HorizontalDimensional, Ar.m_HorizontalDimensional)
-
+uint32_t Matrix::FindColumn(const Matrix& srcColumn, uint32_t offset_x /*= 0*/) const
 {
-	FullComputation();
-}
-
-std::string MatrixDr::Print(bool separated /*= true*/)
-{
-	std::string result = "{\n";
-
-	for (uint32_t y = 0; y < m_VerticalDimensional; ++y)
+	if (offset_x >= m_HorizontalDimensional)
+		throw logic_error("Matrix::FindColumn offset_x >= m_HorizontalDimensional");
+	
+	for (uint32_t x = offset_x; x < m_HorizontalDimensional; x++)
 	{
-		for (uint32_t x = 0; x < m_HorizontalDimensional; ++x)
-		{
-			if (separated)
-			{
-				if (x == m_ArOrigin.second)
-				{
-					result += " | ";
-				}
+		Matrix column = GetSubMatrix(0, x, m_VerticalDimensional, 1);
 
-				if (x == m_LambdarOrigin.second)
-				{
-					result += " | ";
-				}
-			}
-
-			result += to_string((*this)[{y, x}]) + ", ";
-		}
-
-		result.pop_back();
-		result.pop_back();
-		result += "\n";
+		if (srcColumn == column)
+			return x;
 	}
-
-	result += " }\n";
-
-	return result;
+	return npos;
 }
 
-std::string MatrixDr::PrintRankedMatrix(bool separated /*= true*/)
+bool Matrix::IsIdentityMatrix() const
 {
-	vector<uint32_t> widths(m_HorizontalDimensional);
-
-	std::string result = "{\n";
-
 	for (uint32_t y = 0; y < m_VerticalDimensional; ++y)
 	{
 		for (uint32_t x = 0; x < m_HorizontalDimensional; ++x)
 		{
-			if (separated)
+			if (y == x)
 			{
-				if (x == m_ArOrigin.second)
-				{
-					result += " | ";
-				}
-
-				if (x == m_LambdarOrigin.second)
-				{
-					result += " | ";
-				}
-			}
-
-
-			if (std::find(m_SpecialLinearlyIndependent.begin(), m_SpecialLinearlyIndependent.end(), make_pair(y, x)) != m_SpecialLinearlyIndependent.end())
-			{
-				auto value = to_string((*this)[{y, x}]);
-
-				widths[x] = std::max<uint32_t>(widths[x], (uint32_t)value.length());
-				result += value + ", ";
+				if (!FCmp((*this)[{y, x}], 1.0f))
+					return false;
 			}
 			else
 			{
-				result += "********, ";
+				if (!IsFZero((*this)[{y, x}]))
+					return false;
 			}
 		}
-
-		result.pop_back();
-		result.pop_back();
-		result += "\n";
 	}
-
-	result += " }\n";
-
-	return result;
+	return true;
 }
 
-Matrix MatrixDr::GetMatrixQ() const
-{
-	return m_Q;
-}
-
-Matrix MatrixDr::GetMatrixGamma() const
-{
-	return m_Gamma;
-}
-
-OperatorR MatrixDr::GetOperatorR() const
-{
-	Matrix Gamma = GetMatrixGamma();
-
-	Matrix R = EnOOOMatrix(Gamma) * Gamma.Transpose() * (Gamma * Gamma.Transpose()).Inverse();
-
-	OperatorR result;
-
-	for (uint32_t x = 0, size = R.m_HorizontalDimensional; x < size; x += m_Ar.m_HorizontalDimensional)
-	{
-		auto Ri = R.GetSubMatrix(0,x, m_Ar.m_HorizontalDimensional, m_Ar.m_HorizontalDimensional);
-		result.m_Rs.push_back(Ri);
-	}
-
-	return result;
-}
-
-void MatrixDr::FullComputation()
-{
-	vector<ElementIndex> generalLinearlyIndependent;
-	auto rank = Matrix::Rank(RankMethod::RightTop,&generalLinearlyIndependent);
-
-	vector<ElementIndex> lambdaLinearlyIndependent;
-	auto rankLambdar = m_Lambdar.Rank(RankMethod::LeftTop, &lambdaLinearlyIndependent);
-
-	uint32_t n = m_Ar.m_HorizontalDimensional;
-
-	m_D = rank - n - rankLambdar;
-
-	vector<ElementIndex> aLinearlyIndependent;
-	auto rankAr = m_Ar.Rank(RankMethod::LeftTop, &aLinearlyIndependent);
-
-	vector<ElementIndex> bLinearlyIndependent;
-	CompleteRankComputation(&bLinearlyIndependent);
-	
-	for (auto& idx : aLinearlyIndependent)
-	{
-		idx.first += m_ArOrigin.first;
-		idx.second += m_ArOrigin.second;
-	}
-
-	for (auto& idx : lambdaLinearlyIndependent)
-	{
-		idx.first += m_LambdarOrigin.first;
-		idx.second += m_LambdarOrigin.second;
-	}
-
-	m_SpecialLinearlyIndependent.insert(m_SpecialLinearlyIndependent.end(), bLinearlyIndependent.begin(), bLinearlyIndependent.end());
-	m_SpecialLinearlyIndependent.insert(m_SpecialLinearlyIndependent.end(), aLinearlyIndependent.begin(), aLinearlyIndependent.end());
-	m_SpecialLinearlyIndependent.insert(m_SpecialLinearlyIndependent.end(), lambdaLinearlyIndependent.begin(), lambdaLinearlyIndependent.end());
-
-	
-
-	m_Q = IdentityMatrix(m_Q);
-
-
-	m_Gamma = *this;
-	m_Gamma.ExcludeColumnsExcept(m_SpecialLinearlyIndependent);
-
-}
-
-void MatrixDr::CompleteRankComputation(vector<ElementIndex>* linearlyIndependent)
-{
-	auto Br = m_Br;
-
-	auto rankBr = Br.Rank();
-
-	Br.FlipHorizontal();	
-	Br.RankInternal_Step1(linearlyIndependent,0, rankBr - m_D);
-	
-	for (auto& e : *linearlyIndependent)
-	{
-		e.second = Br.m_HorizontalDimensional - 1 - e.second;
-	}
-}
-
-Matrix MatrixDr::EnOOOMatrix(const Matrix& gamma) const
-{
-	Matrix result(m_Ar.m_HorizontalDimensional, gamma.m_HorizontalDimensional);
-
-	Matrix En(m_Ar.m_HorizontalDimensional, m_Ar.m_HorizontalDimensional);
-	En = IdentityMatrix(En);
-
-	result.SetSubMatrix(0,0,En);
-
-	return result;
-}
-
-OperatorR::OperatorR(initializer_list<Matrix> il)
-{
-	for (auto& m : il)
-	{
-		m_Rs.push_back(m);
-	}
-}
-
-OperatorR::OperatorR()
-{
-
-}
-
-Matrix& OperatorR::operator[](uint32_t i)
-{
-	return	m_Rs.at(i);
-}
-
-Matrix OperatorR::operator[](uint32_t i) const
-{
-	return	m_Rs.at(i);
-}
-
-std::string OperatorR::AsString() const
-{
-	string result;
-
-	for (uint32_t c = 0, size = (uint32_t)m_Rs.size(); c < size; c++)
-	{
-		result += "R_" + to_string(c) + " = " + m_Rs[c].AsString() + "\n";
-	}
-		
-	return result;
-}
-
-
-DAE OperatorR::ApplyTo(const Matrix& A, const Matrix& B, const Matrix& Q)
-{
-	//A *dx + B * x = 0;
-	
-	int64_t order = (uint32_t)m_Rs.size() - 1;
-
-	if (order == 0)
-		throw logic_error("OperatorR::ApplyTo order == 0");
-	
-	DAE result;
-
-	do	
-	{
-		auto Ri = m_Rs[(uint32_t)order];
-
-		result[1 + (uint32_t)order] += Ri*A;
-		result[(uint32_t)order] += Ri*B;
-	}
-	while (order--);
-	
-
-	return result;
-
-}
-
-DAE::DAE()
-{
-
-}
-
-uint32_t DAE::GetMatrixDimensional() const
-{
-	if (!m_Coefficients.empty())
-	{
-		return m_Coefficients.begin()->second.m_HorizontalDimensional;
-	}
-	else
-	{
-		return 0;
-	}	
-}
-
-Matrix& DAE::operator[](uint32_t order)
-{
-	return m_Coefficients[order];
-}
-
-Matrix DAE::operator[](uint32_t order) const
-{	
-	auto it = m_Coefficients.find(order);
-	if (it != m_Coefficients.end())
-	{
-		return it->second;
-	}
-	else
-	{
-		return ZeroMatrix( Matrix(GetMatrixDimensional(), GetMatrixDimensional() ) );		
-	}
-}
-
-std::string DAE::AsString() const
-{
-	string result;
-	for (auto it = m_Coefficients.rbegin(); it != m_Coefficients.rend(); ++it)
-	{
-		result += it->second.AsString() + " * " + "d" + to_string(it->first) + "x/dt +\n";
-	}
-
-
-	return result;
-}
-
-void DAE::EraseZeroMatrix()
-{
-	for (auto it = m_Coefficients.begin(); it != m_Coefficients.end();)
-	{
-		if (it->second.IsZeroMatrix())
-		{
-			it = m_Coefficients.erase(it);
-		}
-		else
-		{
-			++it;
-		}
-	}
-}

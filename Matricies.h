@@ -1,11 +1,20 @@
 #pragma once
 
 
+typedef std::complex<float> complexF;
+
+
 typedef std::vector<float> Vector;
+typedef std::complex<float> complexF;
+
 
 float DotProduct(const Vector& a, const Vector& b);
 bool FCmp(float a, float b);
+bool FCmp(complexF a, complexF b);
+
 bool IsFZero(float value);
+
+float sgn(float value);
 
 
 
@@ -74,17 +83,33 @@ public:
 
 	virtual Matrix& operator+=(const Matrix& rhs);
 	virtual Matrix operator+(const Matrix& rhs) const;
+	virtual Matrix operator-(const Matrix& rhs) const;
 	virtual Matrix operator*(const Matrix& rhs) const;
 	virtual float& operator[](ElementIndex idx);
 	virtual float operator[](ElementIndex idx) const;
 
 	virtual void SetDimensionals(uint32_t vertical, uint32_t horizontal) override;
 	virtual float Det(vector<float>* bottomDets = nullptr) const override;	
+	virtual Eigen::MatrixXf AsEigenMatrix() const;
+	
 
 	virtual std::string AsString() const;
 		
 	virtual uint32_t Rank(RankMethod rankMethod = RankMethod::LeftTop, vector<ElementIndex>* linearlyIndependent = nullptr) const;
 	std::string AsStringRanked(RankMethod rankMethod = RankMethod::LeftTop) const;
+
+	virtual float Trace() const;
+
+	virtual vector<complexF> Eigenvalues() const;
+	virtual Vector SingularValues() const;
+	virtual float NormSpectral() const;
+
+	virtual bool IsStable() const;
+
+	//virtual vector<complexF> Eigenvalues2() const;	
+	//virtual void Svd(Matrix& U, Matrix& Sigma, Matrix& V) const;
+
+
 
 	
 	virtual Vector GetRowAsVector(uint32_t verticalIndex) const override;
@@ -94,7 +119,7 @@ public:
 
 		
 	void SetSubMatrix(uint32_t y, int32_t x, const Matrix& m);
-	Matrix GetSubMatrix(uint32_t  y, uint32_t  x, uint32_t  verticalDimensional, uint32_t horizontalDimensional);
+	Matrix GetSubMatrix(uint32_t y, uint32_t x, uint32_t verticalDimensional, uint32_t horizontalDimensional) const;
 
 	virtual Matrix& GrowBottom(Matrix m);
 	virtual Matrix& GrowRight(Matrix m);
@@ -110,6 +135,11 @@ public:
 	static void ForAllMatrix(uint32_t vertical, uint32_t horizontal, float beginValue, float endValue, float step, Fn fn);
 
 	bool IsZeroMatrix() const;
+	bool IsIdentityMatrix() const;
+	uint32_t FindColumn(const Matrix& srcColumn, uint32_t offset_x = 0) const;
+	static const uint32_t npos = -1;
+
+
 private:
 	friend class MatrixDr;
 	uint32_t RankInternal_Step1(vector<ElementIndex>* linearlyIndependent, uint32_t target_x = 0, uint32_t iteration = 0);		
@@ -127,86 +157,8 @@ private:
 std::string RankedMatrixAsString(const Matrix& m, const vector<ElementIndex>& linearlyIndependent);
 Matrix ZeroMatrix(const Matrix& A);
 Matrix IdentityMatrix(const Matrix& A);
-void GrowLambdarMatrix(Matrix& Lambdar, const Matrix& A, const Matrix& B);
+Matrix PermutationColumnsMatrix(const Matrix& src, const Matrix& dest);
 
-
-
-class DAE
-{
-public:
-	DAE();	
-		
-	map<uint32_t, Matrix> m_Coefficients;
-
-	uint32_t GetMatrixDimensional() const;
-
-	Matrix& operator[](uint32_t order);
-	Matrix operator[](uint32_t order) const;
-
-	string AsString() const;
-	void EraseZeroMatrix();
-};
-
-
-
-
-class OperatorR
-{
-public:
-	OperatorR();
-	OperatorR(initializer_list<Matrix> il);
-	
-	vector<Matrix> m_Rs;
-
-	Matrix& operator[](uint32_t i);
-	Matrix operator[](uint32_t i) const;
-
-	string AsString() const;
-
-	DAE ApplyTo(const Matrix& A, const Matrix& B, const Matrix& Q);
-private:
-};
-
-
-
-
-
-
-class MatrixDr : public Matrix
-{
-public:
-
-	MatrixDr(const Matrix Br, const Matrix Ar, const Matrix Lambdar);
-
-	ElementIndex m_BrOrigin;
-	ElementIndex m_ArOrigin;
-	ElementIndex m_LambdarOrigin;
-
-	Matrix m_Br;
-	Matrix m_Ar;
-	Matrix m_Lambdar;
-
-	uint32_t m_D;
-
-	Matrix m_Q;
-	vector<ElementIndex> m_SpecialLinearlyIndependent;	
-	Matrix m_Gamma;
-
-
-	
-	string Print(bool separated = true);
-	std::string PrintRankedMatrix(bool separated = true);
-
-	
-	Matrix GetMatrixQ() const;
-	Matrix GetMatrixGamma() const;
-	OperatorR GetOperatorR() const;
-private:
-	void FullComputation();
-	void CompleteRankComputation(vector<ElementIndex>* linearlyIndependent);
-
-	Matrix EnOOOMatrix(const Matrix& gamma) const;
-};
 
 
 
@@ -228,7 +180,7 @@ void Matrix::ForAllMatrix(uint32_t vertical, uint32_t horizontal, float beginVal
 
 	fn(M);
 
-	ForAllMatrixInternal(M, M.m_Data.size(), beginValue, endValue, step, fn);
+	ForAllMatrixInternal(M, (uint32_t)M.m_Data.size(), beginValue, endValue, step, fn);
 }
 
 template <typename Fn>
