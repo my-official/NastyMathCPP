@@ -20,7 +20,32 @@ int main()
 	try
 	{
 		cout << std::boolalpha;
-		ArticleExample();		
+		//Test();
+		//ArticleExample();
+		
+		
+		//SymbolicTest();
+		//NewFeaturesTest();
+		//FindNewExamples();
+		//LatexTest();
+
+		//		GinacTest();
+
+
+		//NewExamples();		
+		//ExampleB();
+		//ExampleAB();
+		teacher();
+		//NewArticleBlockMatrixMultiplication();
+	//	FindNewExamplesEx();
+	//	TestEx();
+
+		//ParallelForEachMatrixTest();
+		//SymbolicMatrixTest();
+		//FindNewExamplesEx();
+	//	LatexNewArticleExamples();
+	
+		
 	}
 	catch (std::exception& e)
 	{

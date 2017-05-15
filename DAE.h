@@ -2,6 +2,7 @@
 
 #include "Matrix\BaseMatrix.h"
 #include "Matrix\RealMatrix.h"
+#include "Matrix\SymbolicMatrix.h"
 
 
 template <class MatrixT/* = RealMatrix*/>
@@ -144,6 +145,59 @@ private:
 	friend struct ESFDesc<MatrixT>;
 	MatrixDr() {}
 };
+
+
+
+struct AdmisablePerturbationDesc : public ESFDesc<RealMatrix>
+{
+	SymbolicMatrix C[2];
+	SymbolicMatrix  Delta[2];
+	SymbolicMatrix D[2];
+
+	vector<SymbolicMatrix> Phi;
+	vector<SymbolicMatrix> Ypsilon;
+
+	SymbolicMatrix Cond3;
+	SymbolicMatrix Cond4;
+	SymbolicMatrix Cond5;
+		
+	SymbolicMatrix GetSubPhi(uint32_t order, uint32_t index) const;
+	SymbolicMatrix GetSubYpsilon(uint32_t order, uint32_t index) const;
+	static AdmisablePerturbationDesc AdmisableBPerturbation(const ESFDesc<RealMatrix>& desc);
+	static AdmisablePerturbationDesc AdmisableABPerturbation(const ESFDesc<RealMatrix>& desc);
+
+	OperatorR<SymbolicMatrix> CreateOperatorR_BPerturbed(const ESFDesc<RealMatrix>& desc);
+	OperatorR<SymbolicMatrix> CreateOperatorR_ABPerturbed(const ESFDesc<RealMatrix>& desc);
+private:
+	SymbolicMatrix PhiOrYpsilon(const vector<SymbolicMatrix>& m, uint32_t order, uint32_t index) const;
+	void AdmisableBPerturbation_Internal(const ESFDesc<RealMatrix>& desc);
+	void AdmisableABPerturbation_Internal(const ESFDesc<RealMatrix>& desc);
+	
+	template <class Iterator>
+	void AdmisablePerturbationDesc::SubstituteZeros(Iterator first, Iterator last)
+	{
+		C[0].Substitute(first, last, 0).Simplify();
+		C[1].Substitute(first, last, 0).Simplify();
+		Delta[0].Substitute(first, last, 0).Simplify();
+		Delta[1].Substitute(first, last, 0).Simplify();
+		D[0].Substitute(first, last, 0).Simplify();
+		D[1].Substitute(first, last, 0).Simplify();
+
+		for (auto& phi : Phi)
+		{
+			phi.Substitute(first, last, 0).Simplify();
+		}
+
+		for (auto& ypsilon : Ypsilon)
+		{
+			ypsilon.Substitute(first, last, 0).Simplify();
+		}		
+	}
+
+	static void GetVarriblesForPassZeroConditions(deque<Varrible>& varribles, SymbolicMatrix m, const vector<string>& varNamesForExclusion = { "c", "d" });
+};
+
+
 
 
 

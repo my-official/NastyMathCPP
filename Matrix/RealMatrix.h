@@ -1,7 +1,7 @@
 #pragma once
 
 #include "BaseMatrix.h"
-
+#include "BlockMatrix.h"
 
 
 
@@ -83,6 +83,7 @@ private:
 
 
 
+using BlockRealMatrix = BlockMatrix<RealMatrix>;
 
 
 
