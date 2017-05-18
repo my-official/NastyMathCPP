@@ -1181,7 +1181,7 @@ void teacher()
 {
 	LatexFile texFile("tex\\in.tex", "tex\\out.tex");
 
-	auto doit = [&](const RealMatrix& A, const RealMatrix& B, const string& sectionName, int idlingCounter)
+	auto doit = [&](const RealMatrix& A, const RealMatrix& B, const string& sectionName)
 	{
 		auto texSection = texFile.SeekToSection(sectionName.c_str());
 
@@ -1192,7 +1192,7 @@ void teacher()
 
 		auto esf = dae;
 
-		auto desc = esf.ConvertToESF(5,idlingCounter);
+		auto desc = esf.ConvertToESF();
 
 		tex << "Рассмотрим уравнение: " << endl;
 
@@ -1204,43 +1204,30 @@ void teacher()
 		tex << "$det B =" << B.Det() << "$" << endl;
 
 
-		tex << endl << endl << "Приведем это уравнение к структурной форме. Для этого построим матрицу Dr:" << endl;
-		for (auto& r : desc.R.m_Rs)
-		{
-			r.Scale(24.f);
-		}
+		tex << endl << endl << "Приведем это уравнение к структурной форме. Для этого построим матрицу Dr:" << endl;		
 		tex << PrintESFDescAsLatexCode(desc) << endl;
 
 		tex << "Структурная форма" << endl;
 
 		tex << esf.AsLatexCode() << endl;
-		
-		tex << "\\begin{equation}"
-		"M_2^{-1}=\\frac{1}{72}" + (desc.Gamma.Inverse().Scale(72.f)).AsLatexCode() +
-		"\\end{equation}\n";
-
-
-
-
-
 	};
 
 	{
 	RealMatrix A =
 	{
-		3.000000, 0.000000, -1.000000,
-		0.000000, 2.000000, 0.000000,
-		6.000000, 2.000000, -2.000000
+		1.000000, 0.000000, 0.000000,
+		0.000000, 1.000000, 0.000000,
+		0.000000, 0.000000, 0.000000
 	};
 
 	RealMatrix B{
-		4.000000, -1.000000, 0.000000,
-		0.000000, 2.000000, -3.000000,
-		8.000000, 0.000000, 1.000000
+		0.000000, 0.000000, 1.000000,
+		1.000000, 0.000000, 0.000000,
+		0.000000, 1.000000, 0.000000
 	};
 
 
-		doit(A, B, "Пример 2", 1);
+		doit(A, B, "Пример 1");
 		//doit(A, B, "Пример 2", 1);
 	}
 
