@@ -70,6 +70,7 @@ bool Sum::operator==(const Sum& rhs) const
 Sum& Sum::operator+=(const Sum& rhs)
 {
 	copy(rhs.begin(), rhs.end(), back_inserter(*this));
+	Autosimplify();
 	return *this;
 }
 
@@ -82,6 +83,7 @@ Sum& Sum::operator-=(const Sum& rhs)
 	{
 		this->operator[](c) *= -1;		
 	}	
+	Autosimplify();
 	return *this;
 }
 
@@ -108,6 +110,8 @@ Sum& Sum::operator*=(const Sum& rhs)
 	{
 		lhsSummand *= rhs;
 	}
+	Autosimplify();
+
 
 	return *this;
 }
@@ -125,7 +129,7 @@ Sum& Sum::operator/=(const Sum& rhs)
 	{
 		lhsSummand /= rhs;		
 	}
-
+	Autosimplify();
 	return *this;
 }
 
@@ -209,14 +213,17 @@ std::string Sum::AsLatexCode() const
 
 	std::string result;
 
-	for (const Composition& summand : *this)
+	result += front().AsLatexCode();
+		
+	for (auto it = ++begin(); it != end(); ++it)
 	{
-		result += summand.AsLatexCode() + " + ";
-	}
+		const Composition& summand = *it;
+		string latexCode = summand.AsLatexCode();
+		if (latexCode.front() != '-')
+			result += " + ";
 
-	result.pop_back();
-	result.pop_back();
-	result.pop_back();
+		result += latexCode;
+	}
 
 	return result;
 }
@@ -403,6 +410,17 @@ Sum& Sum::SimplifyAdditive()
 
 
 
+SimplificationMode Sum::GetSimplificationMode() const
+{
+	return m_SimplificationMode;
+}
+
+void Sum::SetSimplificationMode(SimplificationMode val)
+{
+	m_SimplificationMode = val;
+	Autosimplify();
+}
+
 void Sum::ToCommonDenominator(SumOfFlatRatios& sumsOfFlatRatio, SumOfScalar& numerator, SumOfScalar& denominator)
 {
 	if (sumsOfFlatRatio.size() < 2)
@@ -483,6 +501,14 @@ void Sum::SimplifyFlatAdditive(SumOfScalar& sumOfScalar)
 	}
 }
 
+
+void Sum::Autosimplify()
+{
+	if (m_SimplificationMode == SimplificationMode::Auto)
+	{
+		Simplify();
+	}
+}
 
 std::string to_string(const Sum& val)
 {

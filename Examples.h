@@ -36,3 +36,6 @@ void TestEx();
 
 
 void teacher();
+
+
+void TestRank();

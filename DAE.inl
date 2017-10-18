@@ -751,6 +751,10 @@ ESFDesc<MatrixT> DAE<MatrixT>::ConvertToESF(const uint32_t MAX_INDEX /*= 5*/, ui
 	/////
 
 	MatrixDr<MatrixT> Dr(Br, Ar, Lambdar);
+
+	*LatexFile::sm_ActiveContext << "$$Dr=" << Dr.AsLatexCode() << "$$" << endl;
+	*LatexFile::sm_ActiveContext << "$$SymDr=" << static_cast<SymbolicMatrix>(Dr).AsLatexCode() << "$$" << endl;
+
 	MatrixT Q = Dr.GetMatrixQ();
 
 	MatrixT Gamma = Dr.GetMatrixGamma();

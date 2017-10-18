@@ -490,23 +490,26 @@ void BaseMatrix<ElementType,DerivedMatrixT,IsEqual,IsEqualZero>::ExcludeColumnsE
 }
 
 template <typename ElementType, class DerivedMatrixT, class IsEqual, class IsEqualZero>
-uint32_t BaseMatrix<ElementType,DerivedMatrixT,IsEqual,IsEqualZero>::RankInternal_Step1(vector<ElementIndex>* linearlyIndependent, uint32_t target_x /*= 0*/, uint32_t iteration /*= 0*/)
+void BaseMatrix<ElementType, DerivedMatrixT, IsEqual, IsEqualZero>::RankInternal_Step1()
 {
-	uint32_t target_y = 0;
-
-	for (; target_y < m_VerticalDimensional; target_y++)
+	for (uint32_t target_x = 0; target_x < m_HorizontalDimensional; ++target_x)
 	{
-		if (m_IsEqualZero((*this)[{target_y, target_x}]))
+		uint32_t target_y = 0;
+
+		for (; target_y < m_VerticalDimensional; target_y++)
+		{
+			if (m_IsEqualZero((*this)[{target_y, target_x}]))
+				continue;
+
+			auto row = GetRowAsVector(target_y);
+
+			if (all_of(row.begin(), row.begin() + target_x, m_IsEqualZero))
+				break;
+		}
+
+		if (target_y == m_VerticalDimensional)
 			continue;
 
-		auto row = GetRowAsVector(target_y);
-
-		if (all_of(row.begin(), row.begin() + target_x, m_IsEqualZero))
-			break;
-	}
-
-	if (target_y < m_VerticalDimensional)
-	{
 		for (uint32_t y = 0; y < m_VerticalDimensional; ++y)
 		{
 			if (y == target_y)
@@ -521,30 +524,66 @@ uint32_t BaseMatrix<ElementType,DerivedMatrixT,IsEqual,IsEqualZero>::RankInterna
 				(*this)[{y, x}] -= multiplier *  (*this)[{target_y, x}];
 			}
 		}
+	}
+}
+
+template <typename ElementType, class DerivedMatrixT, class IsEqual, class IsEqualZero>
+uint32_t BaseMatrix<ElementType, DerivedMatrixT, IsEqual, IsEqualZero>::RankInternal_Step2(vector<ElementIndex>* linearlyIndependent)
+{
+	for (uint32_t target_y = 0; target_y < m_VerticalDimensional; ++target_y)
+	{
+		uint32_t target_x = 0;
+
+		for (; target_x < m_HorizontalDimensional; target_x++)
+		{
+			if (m_IsEqualZero((*this)[{target_y, target_x}]))
+				continue;
+
+			auto column = GetColumnAsVector(target_x);
+
+			if (all_of(column.begin(), column.begin() + target_y, m_IsEqualZero))
+				break;
+		}
+		
+
+		if (target_x == m_HorizontalDimensional)
+			continue;
+
+		for (uint32_t x = 0; x < m_HorizontalDimensional; ++x)
+		{
+			if (x == target_x)
+				continue;
+
+			if (m_IsEqualZero((*this)[{target_y, x}]))
+				continue;
+
+			ElementType multiplier = (*this)[{target_y, x}] / (*this)[{target_y, target_x}];
+			for (uint32_t y = target_y; y < m_VerticalDimensional; ++y)
+			{
+				(*this)[{y, x}] -= multiplier *  (*this)[{y, target_x}];
+			}
+		}
 
 		if (linearlyIndependent)
 		{
 			linearlyIndependent->push_back({ target_y, target_x });
 		}
-		++iteration;
-		++target_x;
+		
+	}
 
-		if (iteration == std::min(m_VerticalDimensional, m_HorizontalDimensional))
+	uint32_t rank = 0;	
+	for (uint32_t y = 0; y < m_VerticalDimensional; ++y)
+	{
+		for (uint32_t x = 0; x < m_HorizontalDimensional; ++x)
 		{
-			return iteration;
+			if (m_IsEqualZero((*this)[{y, x}]))
+				continue;
+
+			++rank;
 		}
 	}
-	else
-	{
-		++target_x;
-	}
 
-	if (target_x == m_HorizontalDimensional)
-	{
-		return iteration;
-	}
-
-	return RankInternal_Step1(linearlyIndependent, target_x, iteration);
+	return rank;
 }
 
 template <typename ElementType, class DerivedMatrixT, class IsEqual, class IsEqualZero>
@@ -805,11 +844,10 @@ uint32_t BaseMatrix<ElementType,DerivedMatrixT,IsEqual,IsEqualZero>::Rank(RankMe
 		throw EXCEPTION;
 		break;
 	}
+			
 
-
-
-	uint32_t rank = t.RankInternal_Step1(linearlyIndependent);
-
+	t.RankInternal_Step1();
+	uint32_t rank = t.RankInternal_Step2(linearlyIndependent);
 
 
 	if (linearlyIndependent)

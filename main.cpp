@@ -17,6 +17,7 @@
 
 int main()
 {
+	int result = 0;
 	try
 	{
 		cout << std::boolalpha;
@@ -35,7 +36,8 @@ int main()
 		//NewExamples();		
 		//ExampleB();
 		//ExampleAB();
-		teacher();
+		//teacher();
+		TestRank();
 		//NewArticleBlockMatrixMultiplication();
 	//	FindNewExamplesEx();
 	//	TestEx();
@@ -49,20 +51,22 @@ int main()
 	}
 	catch (std::exception& e)
 	{
-		cerr << "std::exception: " << e.what() << endl;		
+		cerr << "std::exception: " << e.what() << endl;				
+		result = __LINE__;
 	}
 	catch (...)
 	{
 		cerr << "unknown exception" << endl;		
+		result = __LINE__;		
 	}
 
-	cout << endl << endl << "All finished !!!" << endl << endl;
+	if (result != 0)
+	{
+		char symbol;
+		cin >> symbol;
+	}	
 
-	char symbol;
-	cin >> symbol;
-	
-
-    return 0;
+    return result;
 }
 
 

@@ -4,6 +4,8 @@
 
 const std::string LatexFile::sm_MikTexPath = R"(D:\Program_Files\Full_Tex\texmf\miktex\bin\)";
 
+std::shared_ptr<LatexContext> LatexFile::sm_ActiveContext;
+
 LatexContext::LatexContext(size_t  line) : m_Line(line)
 {
 
@@ -22,7 +24,10 @@ size_t LatexContext::Line()
 
 
 
-LatexFile::LatexFile(const char* srcFile, const char* destFile) : m_SrcFile(srcFile), m_DestFile(destFile)
+LatexFile::LatexFile(const char* srcFile, const char* destFile, bool writeOnDestroy /*= false*/)
+	: m_SrcFile(srcFile)
+	, m_DestFile(destFile)
+	, m_WriteOnDestroy(writeOnDestroy)
 {
 	Load();
 }
@@ -30,6 +35,15 @@ LatexFile::LatexFile(const char* srcFile, const char* destFile) : m_SrcFile(srcF
 
 LatexFile::~LatexFile()
 {
+	try
+	{
+		if (m_WriteOnDestroy)
+			Write();
+	}
+	catch (...)
+	{
+
+	}
 }
 
 void LatexFile::Load()
@@ -52,7 +66,8 @@ std::shared_ptr<LatexContext> LatexFile::SeekToSection(const char* sectionName)
 		{
 			auto latexContext = make_shared<LatexContext>(c + 1);
 			m_ProducedLines.emplace_back(latexContext);
-			return latexContext;
+			sm_ActiveContext = latexContext;
+			return sm_ActiveContext;
 		}
 	}
 		

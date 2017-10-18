@@ -1179,76 +1179,134 @@ void TestEx()
 
 void teacher()
 {
-	LatexFile texFile("tex\\in.tex", "tex\\out.tex");
+	LatexFile texFile("tex\\in.tex", "tex\\out.tex", true);
 
-	auto doit = [&](const RealMatrix& A, const RealMatrix& B, const string& sectionName, int idlingCounter)
+	auto doit = [&](const SymbolicMatrix& A, const SymbolicMatrix& B, const string& sectionName)
 	{
 		auto texSection = texFile.SeekToSection(sectionName.c_str());
 
 		auto& tex = *texSection;
 
-
-		DAE<RealMatrix> dae(A, B);
-
-		auto esf = dae;
-
-		auto desc = esf.ConvertToESF(5,idlingCounter);
+		DAE<SymbolicMatrix> dae(A, B);
 
 		tex << "Рассмотрим уравнение: " << endl;
 
 		tex << dae.AsLatexCode() << endl;
 
 
-		tex << "$det A =" << A.Det() << "$" << endl;
+		tex << "$det A =" << A.Det().AsLatexCode() << "$" << endl;
 
-		tex << "$det B =" << B.Det() << "$" << endl;
+		tex << "$det B =" << B.Det().AsLatexCode() << "$" << endl;
 
+		auto esf = dae;		
+		auto desc = esf.ConvertToESF();
 
 		tex << endl << endl << "Приведем это уравнение к структурной форме. Для этого построим матрицу Dr:" << endl;
-		for (auto& r : desc.R.m_Rs)
-		{
-			r.Scale(24.f);
-		}
 		tex << PrintESFDescAsLatexCode(desc) << endl;
 
 		tex << "Структурная форма" << endl;
 
 		tex << esf.AsLatexCode() << endl;
-		
-		tex << "\\begin{equation}"
-		"M_2^{-1}=\\frac{1}{72}" + (desc.Gamma.Inverse().Scale(72.f)).AsLatexCode() +
-		"\\end{equation}\n";
-
-
-
-
-
 	};
 
+
+	//RealMatrix A =
+	//{
+	//	1, 0, -1,
+	//	0, 0, -1,
+	//	0, 0, 0
+	//};
+
+	//RealMatrix B({
+	//	2, -1, -2,
+	//	0, -1, 2,
+	//	0, 0, 1
+	//});
+
+
+
+	Sum zero = Sum(0);
+	Sum one = Sum(1);
+	Sum m_one = Sum(-1);
+
+	
+	SymbolicMatrix A =
 	{
-	RealMatrix A =
-	{
-		3.000000, 0.000000, -1.000000,
-		0.000000, 2.000000, 0.000000,
-		6.000000, 2.000000, -2.000000
+		one, zero, m_one,
+		zero, zero, m_one,
+		zero, zero, zero
 	};
 
-	RealMatrix B{
-		4.000000, -1.000000, 0.000000,
-		0.000000, 2.000000, -3.000000,
-		8.000000, 0.000000, 1.000000
+	//SymbolicMatrix B(3, 3, "b");
+	SymbolicMatrix B = {
+		Sum(Varrible("b_{11}")), Sum(Varrible("b_{12}")), Sum(Varrible("b_{13}")),
+		Sum(0), Sum(Varrible("b_{22}")), Sum(Varrible("b_{23}")),
+		Sum(0), Sum(0), Sum(Varrible("b_{33}"))
 	};
 
-
-		doit(A, B, "Пример 2", 1);
-		//doit(A, B, "Пример 2", 1);
-	}
+	doit(A, B, "Пример 1");	
 
 
 	texFile.Write();
 	/*texFile.Texify(true);*/
 
 	cout << "Finished " << endl;
+}
+
+void TestRank()
+{
+	LatexFile texFile("tex\\in.tex", "tex\\out.tex", true);
+	auto texSection = texFile.SeekToSection("Пример 1");
+	auto& tex = *texSection;
+
+
+	Sum o = Sum(0);
+	Sum one = Sum(1);
+	Sum m_one = Sum(-1);
+
+	SymbolicMatrix Dr (9,12,{
+		Sum(Varrible("b_{11}")),Sum(Varrible("b_{12}")),Sum(Varrible("b_{13}")),1 , o , -1 , o , o , o , o , o , o,
+		o , Sum(Varrible("b_{22}")),Sum(Varrible("b_{23}")),o , o , -1 , o , o , o , o , o , o,
+		o , o , Sum(Varrible("b_{33}")),o , o , o , o , o , o , o , o , o,
+		o , o , o , Sum(Varrible("b_{11}")),Sum(Varrible("b_{12}")),Sum(Varrible("b_{13}")),1 , o , -1 , o , o , o,
+		o , o , o , o , Sum(Varrible("b_{22}")),Sum(Varrible("b_{23}")),o , o , -1 , o , o , o,
+		o , o , o , o , o , Sum(Varrible("b_{33}")),o , o , o , o , o , o,
+		o , o , o , o , o , o , Sum(Varrible("b_{11}")),Sum(Varrible("b_{12}")),Sum(Varrible("b_{13}")),1 , o , -1,
+		o , o , o , o , o , o , o , Sum(Varrible("b_{22}")),Sum(Varrible("b_{23}")),o , o , -1,
+		o , o , o , o , o , o , o , o , Sum(Varrible("b_{33}")),o , o , o
+	});
+
+	tex << "$$" << Dr << "$$" << endl;
+	Dr.FlipHorizontal();	
+	tex << "$$" << Dr << "$$" << endl;
+	Dr.FlipHorizontal();
+
+	vector<ElementIndex> rightTopLIE;
+	auto rightTopRank = Dr.Rank(RankMethod::RightTop, &rightTopLIE);
+
+	vector<ElementIndex> leftTopLIE;
+	auto leftTopRank = Dr.Rank(RankMethod::LeftTop, &leftTopLIE);	
+	
+
+	vector<ElementIndex> leftBottomLIE;
+	auto leftBottomRank = Dr.Rank(RankMethod::LeftBottom, &leftBottomLIE);
+
+	vector<ElementIndex> rightBottomLIE;
+	auto rightBottomRank = Dr.Rank(RankMethod::RightBottom, &rightBottomLIE);
+
+	bool passed = (leftTopRank == rightTopRank) &&
+		(leftBottomRank == rightBottomRank) &&
+		(rightTopRank == leftBottomRank);
+	
+	passed = passed && (leftTopLIE.size() == rightTopLIE.size()) &&
+		(leftBottomLIE.size() == rightBottomLIE.size()) &&
+		(rightTopLIE.size() == leftBottomLIE.size());
+		
+
+	if (!passed)
+	{
+		throw EXCEPTION;
+	}
 }
 
 void FindNewExamplesEx()

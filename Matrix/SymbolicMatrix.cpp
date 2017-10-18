@@ -38,6 +38,16 @@ Sum SymbolicMatrix::NormSpectral() const
 {
 	return 0;
 }
+//
+//SymbolicMatrix SymbolicMatrix::Inverse() const
+//{
+//	SymbolicMatrix M = *this;
+//	M.Simplify();
+//
+//	BaseMatrix<Sum, SymbolicMatrix> result = M;
+//		 
+//	return result.Inverse();
+//}
 
 SymbolicMatrix& SymbolicMatrix::Simplify()
 {

@@ -17,8 +17,9 @@ class LatexFile
 {
 public:
 	static const string sm_MikTexPath;
+	static shared_ptr<LatexContext> sm_ActiveContext;
 
-	LatexFile(const char* srcFile, const char* destFile);
+	LatexFile(const char* srcFile, const char* destFile, bool writeOnDestroy = false);
 	virtual ~LatexFile();
 	void Load();
 
@@ -28,6 +29,7 @@ public:
 private:
 	string m_SrcFile;
 	string m_DestFile;
+	bool m_WriteOnDestroy;
 
 	deque<string> m_Lines;
 	list< shared_ptr<LatexContext> > m_ProducedLines;	

@@ -185,54 +185,46 @@ std::string Composition::AsString() const
 
 std::string Composition::AsLatexCode() const
 {
-	std::string numerator;
+	std::string result;
+	bool frac = !m_Dividers.empty();
 
-	numerator += m_Scalar.AsLatexCode();
-		
 
-	if (!numerator.empty())
+	if (frac)
 	{
-		numerator += '*';
-	}
+		result += "\\frac{";
+	}		
+
+	result += m_Scalar.AsLatexCode() + '*';	
 
 
 	for (auto& sym : m_Multipliers)
 	{
 		if (sym.size() == 1)
-			numerator += sym.AsLatexCode() + '*';
-		else
-			numerator += "( " + sym.AsLatexCode() + " )*";
-	}
-
-	numerator.pop_back();
-
-	if (numerator.empty())
-		numerator += "1";
-
-	
-	std::string result;
-
-
-	bool frac = !m_Dividers.empty();
-
-	if (frac)
-		result += "\\frac{";
-
-	result += numerator;
-
-	if (frac)
-		result += "}{";	
-
-	for (auto& sym : m_Dividers)
-	{
-		if (sym.size() == 1)
 			result += sym.AsLatexCode();
 		else
 			result += "( " + sym.AsLatexCode() + " )";
+		
+		result += '*';
 	}
 
+	result.pop_back();	
+	
+	
 	if (frac)
+	{
+		result += "}{";
+
+		for (auto& sym : m_Dividers)
+		{
+			if (sym.size() == 1)
+				result += sym.AsLatexCode();
+			else
+				result += "( " + sym.AsLatexCode() + " )";
+			result += '*';
+		}
+
 		result += "}";
+	}
 
 	return result;
 }

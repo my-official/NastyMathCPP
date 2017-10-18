@@ -81,9 +81,15 @@ public:
 	static bool alphabetical_less(const Sum& lhs, const  Sum& rhs);
 
 	Sum& SimplifyAdditive();	
+
+	SimplificationMode GetSimplificationMode() const;
+	void SetSimplificationMode(SimplificationMode val);
 private:
 	void ToCommonDenominator(SumOfFlatRatios& sumsOfFlatRatio, SumOfScalar& numerator, SumOfScalar& denominator);
 	void SimplifyFlatAdditive(SumOfScalar& sumOfScalar);
+
+	void Autosimplify();
+	SimplificationMode m_SimplificationMode = SimplificationMode::Auto;
 	
 };
 

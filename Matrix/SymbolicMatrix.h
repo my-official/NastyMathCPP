@@ -27,7 +27,7 @@ public:
 	virtual vector<Sum> SingularValues() const;
 	virtual Sum NormSpectral() const;	
 
-
+	//virtual SymbolicMatrix Inverse() const override;
 	////ElementWise functions
 	virtual SymbolicMatrix& Simplify();
 

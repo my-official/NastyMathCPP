@@ -142,7 +142,8 @@ public:
 
 //protected:
 public:
-	virtual uint32_t RankInternal_Step1(vector<ElementIndex>* linearlyIndependent, uint32_t target_x = 0, uint32_t iteration = 0);
+	virtual void RankInternal_Step1();
+	virtual uint32_t RankInternal_Step2(vector<ElementIndex>* linearlyIndependent);
 
 private:
 	IsEqual m_IsEqual;
