@@ -37,7 +37,8 @@ int main()
 		//ExampleB();
 		//ExampleAB();
 		//teacher();
-		TestRank();
+		//TestRank();
+		t2();
 		//NewArticleBlockMatrixMultiplication();
 	//	FindNewExamplesEx();
 	//	TestEx();

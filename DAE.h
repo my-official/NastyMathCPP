@@ -174,7 +174,7 @@ private:
 	void AdmisableABPerturbation_Internal(const ESFDesc<RealMatrix>& desc);
 	
 	template <class Iterator>
-	void AdmisablePerturbationDesc::SubstituteZeros(Iterator first, Iterator last)
+	void SubstituteZeros(Iterator first, Iterator last)
 	{
 		C[0].Substitute(first, last, 0).Simplify();
 		C[1].Substitute(first, last, 0).Simplify();
