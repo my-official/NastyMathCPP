@@ -1177,7 +1177,7 @@ void TestEx()
 }
 
 
-void teacher()
+void t1()
 {
 	LatexFile texFile("tex\\in.tex", "tex\\out.tex", true);
 
@@ -1252,6 +1252,92 @@ void teacher()
 
 	cout << "Finished " << endl;
 }
+
+void t2()
+{
+	Sum o = Sum(0);
+	Sum C1 = Sum(Varrible("C_{1}"));
+	Sum C2 = Sum(Varrible("C_{2}"));
+	Sum L = Sum(Varrible("L"));
+
+	Sum G1 = Sum(Varrible("G_{1}"));
+	Sum G2 = Sum(Varrible("G_{2}"));
+
+	SymbolicMatrix A(5, 5, {
+		o,	o,	o,	o,	o,
+		o,	C1,	o,	o,	o,
+		o,	o,	C2,	o,	o,
+		o,	o,	o,	-L,	o,
+		o,	o,	o,	o,	o
+	});
+
+	SymbolicMatrix B(5, 5, {
+		G1,	-G1,o,	o,	1,
+		-G1,-G1,o,	1,	o,
+		o,	o,	G2,	-1,	o,
+		o,	1,	-1,	o,	o,
+		1,	o,	o,	o,	o
+	});
+
+	SymbolicMatrix Q(5, 5, {
+	Sum(0),	0,	0,	1,	0,
+		1,	0,	0,	0,	0,
+		0,	1,	0,	0,	0,
+		0,	0,	1,	0,	0,
+		0,	0,	0,	0,	1
+	});
+
+
+	LatexFile texFile("tex\\in.tex", "tex\\out.tex", true);
+	auto texSection = texFile.SeekToSection("Пример 1");
+	auto& tex = *texSection;
+
+	tex << "$$AQ=" << A*Q << "$$" << endl;
+	tex << "$$BQ=" << B*Q << "$$" << endl;
+
+	SymbolicMatrix P0(5, 5, {
+	Sum(1),	0,	0,	0,	0,
+		0,	0,	0,	0,	1,
+		0,	1,	0,	0,	0,
+		0,	0,	1,	0,	0,
+		0,	0,	0,	1,	0
+	});
+			
+
+	SymbolicMatrix P12(5, 5, {
+	Sum(0),	1,	0,	0,	0,
+		1,-G1,	0,	0,	0,
+		0,	0,1/C1,	0,	0,
+		0,	0,	0,1/C2,	0,
+		0,	0,	0,	0,-1/L
+	});
+
+	SymbolicMatrix P3(5, 5, {
+	Sum(1),	0,	0,	0,	0,
+		0,	1,	0,	0,	0,
+	G1/C1,	0,	1,	0,	0,	
+		0,	0,	0,	1,	0,
+		0,	0,	0,	0,	1
+	});
+
+
+	//SymbolicMatrix R = P3*P12*P0;
+
+	//tex << "$$R=" << R << "$$" << endl;
+
+	//tex << "$$A_{t}=" << R*A*Q << "$$" << endl;
+	//tex << "$$B_{t}=" << R*B*Q << "$$" << endl;
+
+	tex << "$$A_{0}=" << P0*A*Q << "$$" << endl;
+	tex << "$$B_{0}=" << P0*B*Q << "$$" << endl;
+	tex << "$$A_{12}=" << P12*P0*A*Q << "$$" << endl;
+	tex << "$$B_{12}=" << P12*P0*B*Q << "$$" << endl;
+	tex << "$$A_{3}=" << P3*P12*P0*A*Q << "$$" << endl;
+	tex << "$$B_{3}=" << P3*P12*P0*B*Q << "$$" << endl;
+
+
+}
+
 
 void TestRank()
 {

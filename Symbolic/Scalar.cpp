@@ -139,34 +139,50 @@ std::string Scalar::AsString() const
 std::string Scalar::AsLatexCode() const
 {
 	std::string result;
-
-	if (!FCmp(m_Coefficient, 1.f))
-	{
-		result += to_latex(m_Coefficient) + '*';
-	}
 		
-	for (auto num : m_Numbers)
+	
+
+	if (m_Numbers.empty() && m_Varribles.empty())
 	{
-		if (num >= 0)
+		result = to_latex(m_Coefficient);
+	}
+	else
+	{		
+		auto ñoefficientAbs = std::abs(m_Coefficient);
+		
+		if (!FCmp(ñoefficientAbs, 1.f))
 		{
-			result += to_string(num);
+			result += to_latex(m_Coefficient) + "*";
 		}
 		else
 		{
-			result += "(" + to_string(num) + ")";
+			if (m_Coefficient < 0.f)
+			{
+				result += "-";
+			}
 		}
-		result += '*';
+
+		
+		for (auto num : m_Numbers)
+		{
+			if (num >= 0)
+			{
+				result += to_string(num);
+			}
+			else
+			{
+				result += "(" + to_string(num) + ")";
+			}
+			result += '*';
+		}
+
+		for (auto& var : m_Varribles)
+		{
+			result += var.AsLatexCode() + '*';
+		}
+
+		result.pop_back();
 	}
-	
-	for (auto& var : m_Varribles)
-	{
-		result += var.AsLatexCode() + '*';
-	}
-	
-	if (!result.empty())
-		result.pop_back();		
-	else
-		result = "1";			
 
 	return result;
 }

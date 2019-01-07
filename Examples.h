@@ -35,7 +35,8 @@ void dxPerturbed();
 void TestEx();
 
 
-void teacher();
+void t1();
 
+void t2();
 
 void TestRank();
